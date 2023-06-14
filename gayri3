@@ -1,0 +1,36 @@
+
+#Creating Segments
+cltv_c["segment"]=pd.qcut(cltv_c["CLTV"],4,labels=["D","C","B","A"])
+
+
+cltv_c.groupby("segment").agg({"count","sum","mean"})
+
+
+cltv_c.to_excel("cltv.xlsx")
+
+#fonksiyonlaştırma
+
+def Cltv_segmentation(df,profit_rate=0.1):
+    df=df[~df["Invoice"].astype(str).str.contains("C",na=False)]
+    df=df[df["Quantity"]>0]
+    df = df.dropna()
+    df["Total_Price"] = df["Quantity"]*df["Price"]
+
+    cltv_c = df.groupby("Customer ID").agg({"Total_Price": lambda price: price.sum(),
+                                            "Quantity": lambda quan: quan.sum(),
+                                            "Invoice": lambda invo: invo.nunique()})
+
+    cltv_c.columns = ["total_price", "total_unit", "total_transaction"]
+
+    # average order value hesabı
+    cltv_c["average_order_value"] = cltv_c["total_price"] / cltv_c["total_transaction"]
+
+    # purchase frequency
+    cltv_c["purchase_frequency"] = cltv_c["total_transaction"] / cltv_c.shape[0]
+
+    # repeat and churn rate
+
+    repeat_rate = cltv_c[cltv_c["total_transaction"] > 1].shape[0] / cltv_c.shape[0]
+    churn_rate = 1 - repeat_rate
+
+    # profit margin ( %10)
